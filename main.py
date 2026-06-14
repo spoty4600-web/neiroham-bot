@@ -189,15 +189,22 @@ async def refine_prompt(current_prompt: str, user_request: str) -> str:
 
 
 async def _pollinations(prompt: str, width: int, height: int) -> bytes | None:
+    import base64 as b64mod
     encoded = urllib.parse.quote(prompt)
+    seed = abs(hash(prompt)) % 999999
     urls = [
-        f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&nologo=true&seed={hash(prompt) % 99999}",
-        f"https://image.pollinations.ai/prompt/{encoded}?nologo=true",
+        f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&nologo=true&seed={seed}",
+        f"https://image.pollinations.ai/prompt/{encoded}?nologo=true&seed={seed}",
     ]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://pollinations.ai/",
+        "Accept": "image/png,image/jpeg,image/*",
+    }
     for url in urls:
         try:
             logging.info(f"Pollinations: {url[:90]}")
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(headers=headers) as session:
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=90)) as resp:
                     if resp.status == 200:
                         data = await resp.read()
@@ -211,11 +218,12 @@ async def _pollinations(prompt: str, width: int, height: int) -> bytes | None:
 
 
 async def _stable_horde(prompt: str) -> bytes | None:
-    headers = {"apikey": "0000000000", "Content-Type": "application/json"}
+    import base64 as b64mod
+    api_headers = {"apikey": "0000000000", "Content-Type": "application/json"}
     payload = {
         "prompt": prompt,
         "params": {
-            "steps": 25,
+            "steps": 20,
             "width": 512,
             "height": 512,
             "sampler_name": "k_euler_a",
@@ -225,85 +233,141 @@ async def _stable_horde(prompt: str) -> bytes | None:
         "nsfw": False,
         "models": ["stable_diffusion"],
         "r2": False,
+        "shared": True,
     }
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 "https://stablehorde.net/api/v2/generate/async",
-                json=payload, headers=headers,
+                json=payload, headers=api_headers,
                 timeout=aiohttp.ClientTimeout(total=30)
             ) as resp:
                 if resp.status != 202:
-                    logging.warning(f"Horde submit failed: {resp.status}")
+                    logging.warning(f"Horde submit failed: {resp.status} — {await resp.text()}")
                     return None
                 job = await resp.json()
                 job_id = job.get("id")
 
+            if not job_id:
+                logging.error("Horde: no job_id")
+                return None
+
             logging.info(f"Horde job submitted: {job_id}")
-            for _ in range(72):
-                await asyncio.sleep(5)
-                async with session.get(
-                    f"https://stablehorde.net/api/v2/generate/check/{job_id}",
-                    headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-                ) as resp:
-                    check = await resp.json()
-                    if check.get("done"):
-                        break
-                    logging.info(f"Horde wait: queue={check.get('queue_position')}, eta={check.get('wait_time')}s")
+            for attempt in range(60):
+                await asyncio.sleep(6)
+                try:
+                    async with session.get(
+                        f"https://stablehorde.net/api/v2/generate/check/{job_id}",
+                        headers=api_headers, timeout=aiohttp.ClientTimeout(total=10)
+                    ) as resp:
+                        check = await resp.json()
+                        done = check.get("done", False)
+                        logging.info(f"Horde attempt {attempt}: done={done} queue={check.get('queue_position')} eta={check.get('wait_time')}s")
+                        if done:
+                            break
+                except Exception as e:
+                    logging.warning(f"Horde check error: {e}")
 
             async with session.get(
                 f"https://stablehorde.net/api/v2/generate/status/{job_id}",
-                headers=headers, timeout=aiohttp.ClientTimeout(total=15)
+                headers=api_headers, timeout=aiohttp.ClientTimeout(total=15)
             ) as resp:
                 result = await resp.json()
                 gens = result.get("generations", [])
                 if not gens:
+                    logging.warning("Horde: no generations in result")
                     return None
-                img_url = gens[0].get("img")
-                if not img_url:
+                img_data = gens[0].get("img", "")
+                if not img_data:
+                    logging.warning("Horde: empty img field")
                     return None
-                async with session.get(img_url, timeout=aiohttp.ClientTimeout(total=30)) as img_resp:
-                    data = await img_resp.read()
-                    logging.info(f"Horde OK, size={len(data)}")
-                    return data
+                if img_data.startswith("http"):
+                    async with session.get(img_data, timeout=aiohttp.ClientTimeout(total=30)) as img_resp:
+                        data = await img_resp.read()
+                else:
+                    data = b64mod.b64decode(img_data)
+                logging.info(f"Horde OK, size={len(data)}")
+                return data
     except Exception as e:
         logging.error(f"Horde error: {e}")
     return None
 
 
-async def generate_image(prompt: str, width: int = 768, height: int = 768) -> bytes | None:
+async def _prodia(prompt: str) -> bytes | None:
+    """Prodia — ещё один бесплатный API"""
+    try:
+        headers = {"X-Prodia-Key": "free", "Content-Type": "application/json"}
+        payload = {
+            "prompt": prompt,
+            "model": "dreamshaper_8.safetensors [9d40847d]",
+            "steps": 20,
+            "width": 512,
+            "height": 512,
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.prodia.com/v1/sd/generate",
+                json=payload, headers=headers,
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
+                if resp.status != 200:
+                    logging.warning(f"Prodia submit failed: {resp.status}")
+                    return None
+                job = await resp.json()
+                job_id = job.get("job")
+
+            for _ in range(40):
+                await asyncio.sleep(3)
+                async with session.get(
+                    f"https://api.prodia.com/v1/job/{job_id}",
+                    headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    status = await resp.json()
+                    logging.info(f"Prodia status: {status.get('status')}")
+                    if status.get("status") == "succeeded":
+                        img_url = status.get("imageUrl")
+                        async with session.get(img_url, timeout=aiohttp.ClientTimeout(total=20)) as img_resp:
+                            data = await img_resp.read()
+                            logging.info(f"Prodia OK, size={len(data)}")
+                            return data
+                    if status.get("status") in ("failed", "error"):
+                        return None
+    except Exception as e:
+        logging.error(f"Prodia error: {e}")
+    return None
+
+
+async def generate_image(prompt: str, width: int = 512, height: int = 512) -> bytes | None:
     poll_task = asyncio.create_task(_pollinations(prompt, width, height))
     horde_task = asyncio.create_task(_stable_horde(prompt))
+    prodia_task = asyncio.create_task(_prodia(prompt))
 
-    done, pending = await asyncio.wait(
-        [poll_task, horde_task],
-        return_when=asyncio.FIRST_COMPLETED,
-        timeout=100
-    )
+    all_tasks = [poll_task, horde_task, prodia_task]
+    pending = set(all_tasks)
 
-    result = None
-    for task in done:
-        res = task.result()
-        if res:
-            result = res
+    while pending:
+        done, pending = await asyncio.wait(
+            pending,
+            return_when=asyncio.FIRST_COMPLETED,
+            timeout=180
+        )
+        if not done:
+            logging.warning("All image generators timed out")
             break
 
-    for task in pending:
-        task.cancel()
+        for task in done:
+            try:
+                result = task.result()
+                if result and len(result) > 2000:
+                    for t in pending:
+                        t.cancel()
+                    return result
+            except Exception as e:
+                logging.error(f"Task error: {e}")
 
-    if result:
-        return result
-
-    for task in done:
-        res = task.result()
-        if res:
-            return res
-
-    remaining = await asyncio.gather(poll_task, horde_task, return_exceptions=True)
-    for r in remaining:
-        if isinstance(r, bytes) and len(r) > 2000:
-            return r
-
+    for t in all_tasks:
+        if not t.done():
+            t.cancel()
     return None
 
 
