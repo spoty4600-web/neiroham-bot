@@ -53,71 +53,111 @@ SYSTEM_PROMPT = """
 """
 
 IMAGE_PROMPT_SYSTEM = """
-You are an expert image generation prompt engineer.
-The user describes an image in Russian. Convert it into a detailed English prompt for an AI image generator.
-Add: lighting details, style keywords, quality boosters (masterpiece, highly detailed, 8k, sharp focus, etc).
+You are an expert image generation prompt engineer specializing in cinematic anime profile avatars.
+The user describes an image in Russian. Convert it into a detailed English prompt for Stable Diffusion.
+
+CRITICAL RULES for avatar prompts:
+- Always include: masterpiece, best quality, ultra-detailed, sharp focus, 8k
+- Always make it a SQUARE PORTRAIT (centered composition, face/upper body)
+- Add dramatic effects: glowing aura, particle effects, energy lightning, volumetric light rays, atmospheric haze
+- Dark cinematic background with colored glow (NOT plain/flat/simple backgrounds)
+- Character should look intense/cool, looking at viewer
+- Add depth with: depth of field, bokeh background, foreground elements
+- Style: professional digital art, concept art quality
+
 Reply with ONLY the English prompt, no explanations.
 """
 
 REFINE_PROMPT_SYSTEM = """
-You are an expert at refining AI image generation prompts.
+You are an expert at refining AI image generation prompts for cinematic anime avatars.
 You will receive:
 1. CURRENT PROMPT: the existing English image generation prompt
 2. USER REQUEST: what the user wants to change or add (in Russian)
 
 Your job: return an updated English prompt that keeps everything good from the original
 and incorporates the user's requested changes naturally.
+Always keep: masterpiece, best quality, dramatic effects, cinematic atmosphere.
 Reply with ONLY the updated English prompt, nothing else.
 """
+
+NEGATIVE_PROMPT_BASE = "lowres, bad anatomy, bad hands, text, watermark, signature, username, error, blurry, jpeg artifacts, cropped, worst quality, low quality, normal quality, ugly, deformed, mutation, extra limbs, missing limbs, flat background, plain background, simple background, solid background, white background, gradient background, boring background, washed out colors, overexposed, underexposed, bad composition, amateur"
+
+NEGATIVE_PROMPT_ANIME = f"{NEGATIVE_PROMPT_BASE}, 3d render, photorealistic, cgi, realistic skin, poorly drawn face, bad face, fused body, extra fingers, missing fingers"
+
+NEGATIVE_PROMPT_REAL = f"{NEGATIVE_PROMPT_BASE}, anime, cartoon, illustration, painting, drawing, 3d, cgi, deformed face"
 
 AVA_STYLES = {
     "anime": {
         "label": "🎌 Аниме",
-        "prompt": "anime style portrait avatar, vibrant colors, large expressive eyes, clean lineart, detailed hair, studio ghibli inspired, digital illustration, high quality, masterpiece"
+        "models": ["Dreamshaper", "Nova Anime XL", "Abyss OrangeMix"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic anime portrait avatar:1.3), dramatic character, intense expression looking at viewer, dynamic pose, highly detailed anime face, detailed hair with highlights, glowing aura around body, particle effects floating, volumetric light rays, dark atmospheric background with colored bokeh lights, depth of field, sharp focus on face, professional digital art, concept art, 8k resolution, vibrant colors"
     },
     "realistic": {
         "label": "📸 Реализм",
-        "prompt": "photorealistic portrait avatar, professional photography, studio lighting, sharp focus, 8k resolution, cinematic quality, detailed skin texture, masterpiece"
+        "models": ["Dreamshaper", "Deliberate"],
+        "negative": NEGATIVE_PROMPT_REAL,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic portrait avatar:1.3), professional photography, dramatic studio lighting, rim light, octane render quality, photorealistic face, detailed skin texture, intense expression looking at viewer, dark moody background with bokeh, volumetric fog, cinematic color grading, sharp focus, 8k resolution, award winning photography"
     },
     "cyberpunk": {
         "label": "🤖 Киберпанк",
-        "prompt": "cyberpunk portrait avatar, neon lights, futuristic city background, glowing cybernetic implants, dark atmosphere, sci-fi, blade runner aesthetic, highly detailed, 8k"
+        "models": ["Dreamshaper", "Abyss OrangeMix"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic cyberpunk anime portrait avatar:1.3), neon blue and purple glowing effects, cybernetic implants glowing, futuristic dark city background with rain reflections, neon light particles, electric sparks, circuit pattern aura, dramatic neon rim lighting, intense expression looking at viewer, dark atmospheric fog, holographic elements, 8k, sharp focus"
     },
     "cartoon": {
         "label": "🎨 Мультяшный",
-        "prompt": "cartoon portrait avatar, bold outlines, flat vibrant colors, cute character design, expressive face, modern cartoon style, clean lineart, professional illustration"
+        "models": ["Dreamshaper", "Nova Anime XL"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic cartoon portrait avatar:1.3), bold clean lineart, vibrant saturated colors, dramatic lighting with colored shadows, expressive face looking at viewer, dynamic stylized background with geometric shapes and light rays, professional cartoon illustration, thick outlines, cel-shaded, sharp and clean, modern animation style, 8k"
     },
     "fantasy": {
         "label": "🧝 Фэнтези",
-        "prompt": "epic fantasy portrait avatar, magical atmosphere, detailed armor or mystical robes, glowing magical effects, fantasy art style, highly detailed, masterpiece, 8k"
+        "models": ["Dreamshaper", "Nova Anime XL"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (epic fantasy anime portrait avatar:1.3), dramatic magical aura with glowing runes, fantasy armor or mystical robes with intricate details, magical particles and sparkles floating, intense expression looking at viewer, dark mystical background with glowing magical circles, volumetric light from magic, ethereal atmosphere, deep colors, 8k, sharp focus"
     },
     "pixel": {
         "label": "👾 Пиксель-арт",
-        "prompt": "pixel art portrait avatar, retro 16-bit style, detailed pixel character, RPG game sprite aesthetic, clean pixel design, colorful, sharp pixels"
+        "models": ["Deliberate", "Dreamshaper"],
+        "negative": f"{NEGATIVE_PROMPT_BASE}, blurry, anti-aliased, smooth",
+        "prompt": "masterpiece, best quality, (detailed pixel art portrait avatar:1.3), retro 16-bit RPG game style, crisp sharp pixels, detailed pixel character face, dynamic pixel art background with pixel effects and particles, vibrant pixel colors, clean pixel lineart, RPG character portrait, pixel art shading, professional pixel art, 8k equivalent detail"
     },
     "dark": {
         "label": "🖤 Тёмный",
-        "prompt": "dark gothic portrait avatar, moody dramatic atmosphere, dark aesthetic, cinematic shadow and light contrast, dark fantasy art, mysterious, highly detailed"
+        "models": ["Dreamshaper", "Abyss OrangeMix"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (dark cinematic anime portrait avatar:1.3), dramatic dark atmosphere, deep shadows, glowing red or purple energy aura, shadow particles disintegrating, intense cold expression looking at viewer, dark background with subtle dark fog and distant glow, cinematic shadow lighting from below, contrast between darkness and glow, menacing atmosphere, 8k, sharp focus"
     },
     "graffiti": {
-        "label": "✏️ Граффити",
-        "prompt": "graffiti street art portrait avatar, urban aesthetic, spray paint texture, bold dynamic colors, hip hop culture, grunge texture, professional street art style"
+        "label": "🎭 Граффити",
+        "models": ["Deliberate", "Dreamshaper"],
+        "negative": NEGATIVE_PROMPT_BASE,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic graffiti art portrait avatar:1.3), bold spray paint texture, vibrant saturated colors, dynamic urban background with graffiti wall and street elements, paint splatter effects, dramatic hip hop aesthetic, expressive character looking at viewer, bold black outlines, professional street art style, urban particles, dripping paint effects, 8k"
     },
     "oil_painting": {
         "label": "🖼 Масло",
-        "prompt": "oil painting portrait avatar, classical fine art style, rich deep colors, visible brushstrokes, renaissance lighting, museum quality artwork, masterpiece"
+        "models": ["Dreamshaper", "Deliberate"],
+        "negative": NEGATIVE_PROMPT_REAL,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic oil painting portrait avatar:1.3), rich deep brushstrokes visible, classical fine art style, dramatic chiaroscuro lighting, dark moody atmospheric background, renaissance composition, rich saturated colors, warm golden rim light, museum quality artwork, painted texture, intense character expression looking at viewer, 8k"
     },
     "chibi": {
         "label": "🌸 Чиби",
-        "prompt": "chibi portrait avatar, super deformed cute style, oversized head small body, huge sparkling eyes, soft pastel colors, adorable kawaii expression, clean art"
+        "models": ["Dreamshaper", "Nova Anime XL"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cute chibi anime portrait avatar:1.3), super deformed style, oversized head small body, huge sparkly glowing eyes, soft glowing pastel background with stars and sparkles, adorable kawaii expression, pastel color palette, soft lighting, clean smooth lineart, magical particle effects, floating hearts and stars, 8k, sharp"
     },
     "vaporwave": {
         "label": "🌊 Вейпорвейв",
-        "prompt": "vaporwave aesthetic portrait avatar, retro 80s synthwave style, pink purple palette, glitch effects, neon grid background, aesthetic digital art, high quality"
+        "models": ["Dreamshaper", "Abyss OrangeMix"],
+        "negative": NEGATIVE_PROMPT_ANIME,
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic vaporwave anime portrait avatar:1.3), retrowave aesthetic, neon pink purple and cyan palette, glitch effects on edges, synthwave grid background with sunset, neon glow outline around character, retro 80s japanese aesthetic, VHS scanlines overlay, neon particle effects, intense look at viewer, chromatic aberration, dramatic neon lighting, 8k"
     },
     "sketch": {
         "label": "✏️ Скетч",
-        "prompt": "pencil sketch portrait avatar, hand drawn style, detailed crosshatching linework, black and white, professional artistic sketch, clean illustration"
+        "models": ["Deliberate", "Dreamshaper"],
+        "negative": f"{NEGATIVE_PROMPT_BASE}, color, colorful, painted",
+        "prompt": "masterpiece, best quality, ultra-detailed, (cinematic pencil sketch portrait avatar:1.3), dramatic black and white, detailed crosshatching and linework, professional concept art sketch, intense expression looking at viewer, dynamic sketch lines suggesting motion, ink wash shading, strong contrast between black ink and white paper, loose energetic sketch strokes, artist's sketchbook quality, 8k equivalent"
     },
 }
 
@@ -188,25 +228,64 @@ async def refine_prompt(current_prompt: str, user_request: str) -> str:
         return current_prompt
 
 
-async def generate_image(prompt: str, width: int = 512, height: int = 512) -> bytes | None:
+async def download_telegram_photo(file_id: str) -> str | None:
+    """Download a Telegram photo and return it as base64 string (resized to 768x768)."""
     import base64 as b64mod
-    api_headers = {"apikey": "0000000000", "Content-Type": "application/json"}
+    try:
+        file = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file.file_path}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(file_url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                data = await resp.read()
+        img = Image.open(io.BytesIO(data)).convert("RGB")
+        img = img.resize((768, 768), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return b64mod.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception as e:
+        logging.error(f"download_telegram_photo error: {e}")
+        return None
+
+
+async def generate_image(
+    prompt: str,
+    width: int = 512,
+    height: int = 512,
+    negative_prompt: str = "",
+    models: list = None,
+    source_image_b64: str = None,
+    denoising_strength: float = 0.75
+) -> bytes | None:
+    import base64 as b64mod
+    horde_key = os.environ.get("HORDE_API_KEY", "0000000000")
+    api_headers = {"apikey": horde_key, "Content-Type": "application/json", "Client-Agent": "RaiderBot:2.0:tg"}
+    if models is None:
+        models = ["Dreamshaper"]
+    full_prompt = prompt
+    if negative_prompt:
+        full_prompt = f"{prompt} ### {negative_prompt}"
     payload = {
-        "prompt": prompt,
+        "prompt": full_prompt,
         "params": {
-            "steps": 20,
-            "width": 512,
-            "height": 512,
-            "sampler_name": "k_euler_a",
-            "cfg_scale": 7,
+            "steps": 28,
+            "width": width,
+            "height": height,
+            "sampler_name": "k_dpmpp_2m",
+            "cfg_scale": 8,
             "karras": True,
+            "hires_fix": False,
+            "clip_skip": 2,
+            "denoising_strength": denoising_strength if source_image_b64 else 1.0,
         },
         "nsfw": False,
-        "models": ["stable_diffusion"],
+        "models": models,
         "r2": False,
         "shared": True,
         "slow_workers": True,
     }
+    if source_image_b64:
+        payload["source_image"] = source_image_b64
+        payload["source_processing"] = "img2img"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -396,7 +475,11 @@ async def cmd_pic(message: types.Message):
     msg = await message.answer("Рисую... 🎨")
     english_prompt = await generate_image_prompt(user_request)
     logging.info(f"Pic prompt: {english_prompt}")
-    image_data = await generate_image(english_prompt)
+    image_data = await generate_image(
+        english_prompt,
+        negative_prompt=NEGATIVE_PROMPT_BASE,
+        models=["Dreamshaper", "Deliberate"]
+    )
 
     if image_data:
         try:
@@ -410,7 +493,7 @@ async def cmd_pic(message: types.Message):
             logging.error(f"Send photo error: {e}")
             await msg.edit_text("Не смог отправить картинку.")
     else:
-        await msg.edit_text("Pollinations не отвечает. Попробуй позже или измени описание.")
+        await msg.edit_text("Генерация не удалась. Попробуй позже или измени описание.")
 
 
 @dp.message(Command("ava"))
@@ -418,24 +501,41 @@ async def cmd_ava(message: types.Message):
     chat_id = message.chat.id
     user_desc = message.text[4:].strip()
 
+    prev = ava_sessions.get(chat_id, {})
     ava_sessions[chat_id] = {
         "description": user_desc,
         "current_prompt": "",
         "style_key": "",
         "waiting_for": None,
         "last_image": None,
+        "ref_image_b64": prev.get("ref_image_b64"),
+        "ref_mode": prev.get("ref_mode"),
+        "ref_denoising": prev.get("ref_denoising", 0.75),
     }
 
     text = "🎭 <b>Генерация аватарки</b>\n\nВыбери стиль:"
     if user_desc:
         text += f"\n\n<i>Твоё описание: {user_desc}</i>"
+    if prev.get("ref_mode"):
+        mode_labels = {"background": "🖼 фон", "style": "🎨 стиль", "atmosphere": "🌈 атмосфера"}
+        text += f"\n\n<i>📎 Референс активен: {mode_labels.get(prev.get('ref_mode'), prev.get('ref_mode'))}</i>"
 
     await message.answer(text, reply_markup=build_style_keyboard(), parse_mode="HTML")
 
 
 async def do_generate_avatar(chat_id: int, style_key: str, prompt: str, status_msg):
     style = AVA_STYLES[style_key]
-    image_data = await generate_image(prompt, width=1024, height=1024)
+    session = ava_sessions.get(chat_id, {})
+    ref_b64 = session.get("ref_image_b64")
+    ref_denoising = session.get("ref_denoising", 0.75)
+    image_data = await generate_image(
+        prompt,
+        width=768, height=768,
+        negative_prompt=style.get("negative", NEGATIVE_PROMPT_BASE),
+        models=style.get("models", ["Dreamshaper"]),
+        source_image_b64=ref_b64,
+        denoising_strength=ref_denoising
+    )
 
     if image_data:
         ava_sessions[chat_id]["current_prompt"] = prompt
@@ -457,7 +557,7 @@ async def do_generate_avatar(chat_id: int, style_key: str, prompt: str, status_m
             await status_msg.edit_text("Не смог отправить. Попробуй /ava ещё раз.")
     else:
         await status_msg.edit_text(
-            "Pollinations не отвечает 😤\n"
+            "Генерация не удалась 😤\n"
             "Попробуй ещё раз через /ava или смени описание."
         )
 
@@ -483,10 +583,10 @@ async def ava_style_chosen(callback: CallbackQuery):
 
     if user_desc:
         full_prompt = await generate_image_prompt(
-            f"Portrait avatar of: {user_desc}. Style: {style['prompt']}"
+            f"Cinematic avatar portrait. Character description: {user_desc}. Base style reference: {style['prompt']}"
         )
     else:
-        full_prompt = f"portrait avatar, {style['prompt']}, centered square composition, professional avatar photo"
+        full_prompt = style["prompt"]
 
     logging.info(f"Avatar [{style_key}]: {full_prompt}")
 
@@ -519,7 +619,12 @@ async def ava_regen(callback: CallbackQuery):
         parse_mode="HTML"
     )
 
-    image_data = await generate_image(current_prompt, width=1024, height=1024)
+    image_data = await generate_image(
+        current_prompt,
+        width=768, height=768,
+        negative_prompt=style.get("negative", NEGATIVE_PROMPT_BASE),
+        models=style.get("models", ["Dreamshaper"])
+    )
     if image_data:
         ava_sessions[chat_id]["last_image"] = image_data
         keyboard = build_after_ava_keyboard(style_key)
@@ -538,7 +643,7 @@ async def ava_regen(callback: CallbackQuery):
                 parse_mode="HTML"
             )
     else:
-        await callback.message.edit_caption("Pollinations не отвечает. Попробуй ещё раз.")
+        await callback.message.edit_caption("Генерация не удалась. Попробуй ещё раз.")
 
 
 @dp.callback_query(F.data == "ava_edit")
@@ -603,6 +708,88 @@ async def ava_restart(callback: CallbackQuery):
     await callback.message.reply(text, reply_markup=build_style_keyboard(), parse_mode="HTML")
 
 
+def build_ref_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🖼 Использовать как фон", callback_data="ref_mode:background"),
+            InlineKeyboardButton(text="🎨 Скопировать стиль", callback_data="ref_mode:style"),
+        ],
+        [
+            InlineKeyboardButton(text="🌈 Взять атмосферу/цвета", callback_data="ref_mode:atmosphere"),
+            InlineKeyboardButton(text="❌ Не использовать", callback_data="ref_mode:cancel"),
+        ],
+    ])
+
+
+@dp.message(F.photo)
+async def photo_handler(message: types.Message):
+    chat_id = message.chat.id
+    caption = message.caption or ""
+
+    await message.answer(
+        "📎 <b>Фото получено!</b>\n\n"
+        "Что с ним делаем при генерации авы?\n\n"
+        "• <b>Фон</b> — твоё фото станет основой, бот добавит персонажа сверху\n"
+        "• <b>Стиль</b> — бот скопирует арт-стиль/рисовку с этого фото\n"
+        "• <b>Атмосфера</b> — возьмёт цвета и настроение\n",
+        reply_markup=build_ref_keyboard(),
+        parse_mode="HTML"
+    )
+
+    file_id = message.photo[-1].file_id
+    if chat_id not in ava_sessions:
+        ava_sessions[chat_id] = {}
+    ava_sessions[chat_id]["_pending_file_id"] = file_id
+    if caption:
+        ava_sessions[chat_id]["description"] = caption
+
+
+@dp.callback_query(F.data.startswith("ref_mode:"))
+async def ref_mode_chosen(callback: CallbackQuery):
+    chat_id = callback.from_user.id
+    mode = callback.data.split(":")[1]
+
+    if mode == "cancel":
+        if chat_id in ava_sessions:
+            ava_sessions[chat_id]["ref_image_b64"] = None
+            ava_sessions[chat_id]["ref_mode"] = None
+            ava_sessions[chat_id].pop("_pending_file_id", None)
+        await callback.answer("Референс убран")
+        await callback.message.edit_text("❌ Фото не будет использоваться.\n\nЗапусти /ava для генерации.")
+        return
+
+    denoising_map = {"background": 0.55, "style": 0.82, "atmosphere": 0.70}
+    denoising = denoising_map[mode]
+    mode_labels = {"background": "🖼 фон", "style": "🎨 стиль", "atmosphere": "🌈 атмосфера"}
+
+    await callback.answer("Загружаю фото...")
+    await callback.message.edit_text("⏳ Загружаю и обрабатываю фото...")
+
+    file_id = ava_sessions.get(chat_id, {}).get("_pending_file_id")
+    if not file_id:
+        await callback.message.edit_text("Не нашёл фото. Скинь его снова.")
+        return
+
+    b64 = await download_telegram_photo(file_id)
+    if not b64:
+        await callback.message.edit_text("Не смог загрузить фото. Попробуй ещё раз.")
+        return
+
+    if chat_id not in ava_sessions:
+        ava_sessions[chat_id] = {}
+    ava_sessions[chat_id]["ref_image_b64"] = b64
+    ava_sessions[chat_id]["ref_mode"] = mode
+    ava_sessions[chat_id]["ref_denoising"] = denoising
+    ava_sessions[chat_id].pop("_pending_file_id", None)
+
+    await callback.message.edit_text(
+        f"✅ Готово! Режим: <b>{mode_labels[mode]}</b>\n\n"
+        f"Теперь запусти /ava — фото будет применено.\n"
+        f"Можешь описать что хочешь: <code>/ava аниме парень с мечом</code>",
+        parse_mode="HTML"
+    )
+
+
 @dp.message()
 async def message_handler(message: types.Message):
     if not message.text:
@@ -658,8 +845,12 @@ async def message_handler(message: types.Message):
 
 async def keep_alive():
     while True:
-        logging.info(f"[{datetime.now()}] ping")
         await asyncio.sleep(300)
+        try:
+            me = await bot.get_me()
+            logging.info(f"[{datetime.now()}] keep-alive OK — bot @{me.username}")
+        except Exception as e:
+            logging.warning(f"[{datetime.now()}] keep-alive error: {e}")
 
 
 async def main():
